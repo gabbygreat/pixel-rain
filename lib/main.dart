@@ -1,219 +1,141 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-void main() {
-  runApp(const MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        useMaterial3: false,
-      ),
-      home: const DemoApp(),
+    return ScreenUtilInit(
+      builder: (context, _) {
+        return MaterialApp(
+          theme: ThemeData(
+            useMaterial3: false,
+            fontFamily: 'MPLUSRounded1c',
+          ),
+          debugShowCheckedModeBanner: false,
+          home: const PaintDemoApp(),
+        );
+      },
     );
   }
 }
 
-class DemoApp extends StatelessWidget {
-  const DemoApp({super.key});
+class PaintDemoApp extends StatefulWidget {
+  const PaintDemoApp({super.key});
 
+  @override
+  State<PaintDemoApp> createState() => _PaintDemoAppState();
+}
+
+class _PaintDemoAppState extends State<PaintDemoApp> {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: Colors.black,
       body: Center(
-        child: AnimatedPlay(),
+        child: AnimatedTextBody(),
       ),
     );
   }
 }
 
-class AnimatedPlay extends StatefulWidget {
-  const AnimatedPlay({super.key});
+class AnimatedTextBody extends StatefulWidget {
+  const AnimatedTextBody({super.key});
 
   @override
-  State<AnimatedPlay> createState() => _AnimatedPlayState();
+  State<AnimatedTextBody> createState() => _AnimatedTextBodyState();
 }
 
-class _AnimatedPlayState extends State<AnimatedPlay>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _animation;
-  String word = 'Next Episode';
+class _AnimatedTextBodyState extends State<AnimatedTextBody> {
+  late String text;
+  int? selectedIndex;
+  int? right;
+  int? left;
+
+  final List<GlobalKey> _textKeys = [];
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-      reverseDuration: const Duration(seconds: 6),
-    )
-      ..addListener(() {
-        setState(() {});
-      })
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          _animationController.value = 0;
-        }
-        if (status == AnimationStatus.dismissed) {
-          _animationController.forward();
-        }
-      });
-    _animation = Tween(begin: 0.0, end: 1.0).animate(_animationController);
-    _animationController.forward();
+    text = 'Happy Birthday';
+    _textKeys.addAll(List.generate(text.length, (_) => GlobalKey()));
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+  void _updateSelectedIndexFromPosition(Offset position) {
+    for (int i = 0; i < _textKeys.length; i++) {
+      final key = _textKeys[i];
+      final renderBox = key.currentContext?.findRenderObject() as RenderBox?;
+      if (renderBox == null) return;
+      final boxPosition = renderBox.localToGlobal(Offset.zero);
+      final boxSize = renderBox.size;
 
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        height: 55,
-        width: 220,
-        color: Colors.grey,
-        child: AnimatedBuilder(
-            animation: _animation,
-            builder: (context, _) {
-              return Stack(
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      heightFactor: 1,
-                      widthFactor: _animation.value,
-                      child: const ColoredBox(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ShadedText(
-                          delay: 0.7,
-                          controller: _animationController,
-                          child: const Icon(
-                            Icons.play_arrow,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(
-                          width: 10,
-                        ),
-                        ...List.generate(word.length, (index) {
-                          return ShadedText(
-                            text: word[index],
-                            controller: _animationController,
-                            delay: 1.6 + index * 0.28,
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }),
-      ),
-    );
-  }
-}
-
-class ShadedText extends StatefulWidget {
-  final String? text;
-  final double delay;
-  final AnimationController controller;
-  final Widget? child;
-  const ShadedText({
-    super.key,
-    this.text,
-    required this.delay,
-    required this.controller,
-    this.child,
-  });
-
-  @override
-  State<ShadedText> createState() => _ShadedTextState();
-}
-
-class _ShadedTextState extends State<ShadedText> {
-  ValueNotifier<double> fraction = ValueNotifier(0);
-  late Timer _timer;
-  double timeKeeper = 0.0;
-
-  @override
-  void initState() {
-    super.initState();
-
-    widget.controller.addStatusListener((status) {
-      if (status == AnimationStatus.dismissed) {
-        _timer.cancel();
-        fraction.value = 0;
-        timeKeeper = 0;
-        _callTimer();
-      }
-    });
-    _callTimer();
-  }
-
-  void _callTimer() {
-    _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      timeKeeper += 0.1;
-      if (timeKeeper >= widget.delay) {
-        _fireAnimation();
-      }
-    });
-  }
-
-  void _fireAnimation() {
-    fraction.value = fraction.value + 0.11;
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-        valueListenable: fraction,
-        builder: (context, frac, _) {
-          return ShaderMask(
-            shaderCallback: (bounds) {
-              return LinearGradient(
-                colors: const [Colors.black, Colors.white],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                stops: [frac, 0],
-                tileMode: TileMode.decal,
-              ).createShader(bounds);
-            },
-            child: widget.child ??
-                Text(
-                  widget.text!,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                    color: Colors.white,
-                  ),
-                ),
-          );
+      // Check if the drag position is within this character's box
+      if (position.dx >= boxPosition.dx &&
+          position.dx <= boxPosition.dx + boxSize.width) {
+        setState(() {
+          selectedIndex = i;
+          left = i - 1;
+          right = i + 1;
         });
+        break;
+      }
+    }
+  }
+
+  double _getFontSize(int index) {
+    if (selectedIndex == index) {
+      return 50;
+    } else if (left == index || right == index) {
+      return 40;
+    } else {
+      return 30;
+    }
+  }
+
+  Color _getTextColor(int index) {
+    if (selectedIndex == index) {
+      return Colors.orange;
+    } else if (left == index || right == index) {
+      return Colors.orange.withOpacity(0.8);
+    } else {
+      return Colors.white;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final data = text.split('');
+    return GestureDetector(
+      onHorizontalDragUpdate: (details) {
+        _updateSelectedIndexFromPosition(details.globalPosition);
+      },
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(data.length, (index) {
+          return TweenAnimationBuilder(
+            key: _textKeys[index],
+            tween: Tween<double>(
+              begin: 30,
+              end: _getFontSize(index),
+            ),
+            duration: const Duration(milliseconds: 100),
+            builder: (context, size, child) {
+              return Text(
+                data[index],
+                style: TextStyle(
+                  color: _getTextColor(index),
+                  fontWeight: FontWeight.w800,
+                  fontSize: size,
+                ),
+              );
+            },
+          );
+        }),
+      ),
+    );
   }
 }
